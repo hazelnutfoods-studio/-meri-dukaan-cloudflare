@@ -1,0 +1,33 @@
+name = "meri-dukaan"
+main = "src/worker.mjs"
+compatibility_date = "2025-11-01"
+compatibility_flags = ["nodejs_compat"]
+keep_vars = true # settings you type in the Cloudflare dashboard are not wiped when the app is updated
+
+# The pages in /public are served by Cloudflare itself; only these addresses wake the shop's code.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "none"
+not_found_handling = "none"
+run_worker_first = ["/", "/manage", "/move", "/api/*", "/invoice/*", "/s/*"]
+
+# The database. Create one called meri-dukaan in Cloudflare (Storage & databases > D1) and paste its ID below.
+[[d1_databases]]
+binding = "DB"
+database_name = "meri-dukaan"
+database_id = "PASTE-YOUR-D1-DATABASE-ID-HERE"
+
+# Fonts are read as plain files so invoices can be made as PDFs.
+[[rules]]
+type = "Data"
+globs = ["**/*.ttf"]
+fallthrough = true
+
+# Cloudflare cannot run a few Node parts exactly as they are, so these small stand-ins are used instead.
+[alias]
+"firebase-admin" = "./src/d1-firestore.js"
+"body-parser" = "./src/stubs/body-parser.js"
+"nodemailer" = "./src/stubs/nodemailer.js"
+"express-rate-limit" = "./src/stubs/express-rate-limit.js"
+
