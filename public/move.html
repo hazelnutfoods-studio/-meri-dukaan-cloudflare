@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Move my shop</title>
+<style>
+:root{color-scheme:light dark;--bg:#efeaf9;--card:#fff;--ink:#241b3a;--mute:#7b7592;--line:#e8e3f3;--ac:#4b2a85;--on:#fff;--ok:#12805c;--er:#b3261e}
+@media(prefers-color-scheme:dark){:root{--bg:#171226;--card:#211a36;--ink:#efeafc;--mute:#a69fc0;--line:#352c52;--ac:#b9a3ff;--on:#1a0f3a;--ok:#5fd6a6;--er:#ff9a92}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px}
+.w{max-width:520px;margin:0 auto}.c{background:var(--card);border-radius:22px;padding:20px;margin-top:14px}h1{margin:8px 0 0;color:var(--ac)}h2{margin:0 0 6px;font-size:1.1rem}
+p{margin:6px 0;color:var(--mute)}input{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);margin:8px 0}
+button{width:100%;font:inherit;font-weight:700;border:0;border-radius:14px;padding:13px;background:var(--ac);color:var(--on);cursor:pointer;margin-top:6px}button:disabled{opacity:.5}
+.log{white-space:pre-wrap;font-size:.9rem;margin-top:10px;color:var(--ink)}.er{color:var(--er)}.ok{color:var(--ok)}
+</style></head><body><div class="w"><h1>Move my shop</h1><p>Copy everything (products, photos, prices, descriptions, brands, tags, orders) from one copy of Meri Dukaan to another.</p>
+<div class="c"><h2>Step 1 – Save my shop to a file</h2><p>Open this page on your <b>old (Firebase)</b> website and press the button.</p>
+<input id="k1" type="password" placeholder="Your owner password" autocomplete="off"><button id="b1" onclick="out()">Save shop to a file</button><div class="log" id="l1"></div></div>
+<div class="c"><h2>Step 2 – Load the file into this shop</h2><p>Open this page on your <b>new (Cloudflare)</b> website, pick the file and press the button.</p>
+<input id="k2" type="password" placeholder="Your owner password" autocomplete="off"><input id="f" type="file" accept=".json,application/json"><button id="b2" onclick="inn()">Load file into this shop</button><div class="log" id="l2"></div></div></div>
+<script>
+const $ = id => document.getElementById(id), PARTS = ["store", "brands", "tags", "suppliers", "products", "photos", "purchases", "orders", "customers", "reviews", "drafts", "trash", "users", "stats"];
+const say = (id, t, c) => { const e = $(id); e.className = "log " + (c || ""); e.textContent = t; };
+const slug = async () => (await (await fetch("/api/config")).json()).slug;
+const hdr = k => ({ "x-key": k, "Content-Type": "application/json" });
+async function out() {
+  const k = $("k1").value.trim(); if (!k) return say("l1", "Please type your owner password.", "er");
+  $("b1").disabled = true; const all = {};
+  try {
+    const base = "/api/manage/" + await slug();
+    for (const c of PARTS) {
+      all[c] = []; let after = "";
+      do {
+        const r = await fetch(`${base}/move-out?c=${c}&after=${encodeURIComponent(after)}`, { headers: hdr(k) }), j = await r.json();
+        if (!r.ok) throw new Error(j.error || "Could not read the shop");
+        all[c].push(...j.docs); after = j.next; say("l1", `Saving… ${c}: ${all[c].length}`);
+      } while (after);
+    }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: "meri-dukaan", at: Date.now(), parts: all })], { type: "application/json" }));
+    a.download = "meri-dukaan-backup.json"; a.click();
+    say("l1", `Done. File saved: ${all.products.length} products, ${all.photos.length} photos, ${all.orders.length} orders.`, "ok");
+  } catch (e) { say("l1", "Stopped: " + e.message + "\nIf it says the limit is reached, wait until the daily limit resets (about 1:30 pm India time) and try again.", "er"); }
+  $("b1").disabled = false;
+}
+async function inn() {
+  const k = $("k2").value.trim(), f = $("f").files[0]; if (!k) return say("l2", "Please type your owner password.", "er"); if (!f) return say("l2", "Please pick the saved file first.", "er");
+  $("b2").disabled = true;
+  try {
+    const data = JSON.parse(await f.text()); if (data.app !== "meri-dukaan") throw new Error("This is not a Meri Dukaan file.");
+    const base = "/api/manage/" + await slug(); let done = 0;
+    for (const c of PARTS) {
+      const docs = data.parts[c] || []; let i = 0;
+      while (i < docs.length || (c === "store" && i === 0 && docs.length)) {
+        const chunk = []; let size = 0;
+        while (i < docs.length && chunk.length < 150 && (size < 2.5e6 || !chunk.length)) { size += JSON.stringify(docs[i]).length; chunk.push(docs[i++]); }
+        let ok = false;
+        for (let t = 0; t < 3 && !ok; t++) { const r = await fetch(`${base}/move-in`, { method: "POST", headers: hdr(k), body: JSON.stringify({ c, docs: chunk }) }); ok = r.ok; if (!ok && t === 2) throw new Error((await r.json().catch(() => ({}))).error || "Could not save " + c); }
+        done += chunk.length; say("l2", `Loading… ${c}: ${i}/${docs.length}`);
+        if (c === "store") break;
+      }
+    }
+    say("l2", `Done. ${done} records loaded. Open your shop and check the products.`, "ok");
+  } catch (e) { say("l2", "Stopped: " + e.message, "er"); }
+  $("b2").disabled = false;
+}
+</script></body></html>

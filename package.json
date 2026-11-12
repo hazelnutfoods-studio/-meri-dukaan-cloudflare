@@ -1,0 +1,19 @@
+{
+  "name": "meri-dukaan-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to .wrangler-state",
+    "deploy": "wrangler deploy",
+    "schema": "node scripts/make-schema.js",
+    "test": "node test/be.js && node test/be2.js && node test/bc.js && node test/nw.js && node test/sf.js && node test/ui.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "pdfkit": "^0.17.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.158.0"
+  }
+}
