@@ -16,7 +16,7 @@ run_worker_first = ["/", "/manage", "/move", "/api/*", "/invoice/*", "/s/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "meri-dukaan"
-database_id = "PASTE-YOUR-D1-DATABASE-ID-HERE"
+database_id = "01fc1cb4-de0b-4cf3-aac5-81eccb038a2a"
 
 # Fonts are read as plain files so invoices can be made as PDFs.
 [[rules]]
