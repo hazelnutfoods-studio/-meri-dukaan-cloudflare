@@ -192,7 +192,7 @@ app.get("/api/store/:slug", h(async (req, res) => {
   if (!s.exists) return res.status(404).json({ error: "Store not found" });
   const [ps, tg, rv] = await Promise.all([sub(req, "products").where("active", "==", true).get(), sub(req, "tags").orderBy("pos").get(), sub(req, "reviews").orderBy("at", "desc").limit(6).get()]);
   const out = {
-    name: s.data().name, maxQty: maxQtyOf(s.data()), phone: (s.data().business || {}).phone || "", tags: tg.docs.map(d => d.data().name), tagPics: Object.fromEntries(tg.docs.filter(d => d.data().photo).map(d => [d.data().name, `/api/photo/${req.params.slug}/${d.data().photo}`])),
+    name: s.data().name, maxQty: maxQtyOf(s.data()), phone: (s.data().business || {}).phone || "", banners: (s.data().banners || []).map(b => bannerOut(req.params.slug, b)), tags: tg.docs.map(d => d.data().name), tagPics: Object.fromEntries(tg.docs.filter(d => d.data().photo).map(d => [d.data().name, `/api/photo/${req.params.slug}/${d.data().photo}`])),
     products: ps.docs.filter(d => !isExpired(d.data())).sort((a, b) => when(a) - when(b)).map(d => {
       const x = d.data(), photos = (x.photos || []).map(i => `/api/photo/${req.params.slug}/${i}`);
       return { id: d.id, name: x.name, price: x.price, mrp: x.mrp > x.price ? x.mrp : 0, description: x.description || "", qty: x.qty == null ? null : sellable(x), tags: x.tags || [], group: x.mergeUnder || d.id, kind: x.kind || "general", brand: x.brand || "", o1: x.o1 || "", o2: x.o2 || "", sold: x.sold || 0, nw: x.nw || "", bs: x.bs || "", exp: x.qty === 0 ? "" : nextExpiry(batchesOf(x), x.expiry), featured: !!x.featured, at: when(d), photos: photos.length ? photos : (x.image ? [x.image] : []) };
@@ -798,6 +798,40 @@ app.post(m + "/tags/:id/move", auth, ownerOnly, h(async (req, res) => {
   if (i < 0 || j < 0 || j >= all.length) return res.json({ ok: true });
   const pi = all[i].data().pos, pj = all[j].data().pos; // read both first, then swap
   await Promise.all([all[i].ref.update({ pos: pj }), all[j].ref.update({ pos: pi })]); res.json({ ok: true });
+}));
+
+
+// ----- homepage banners (owner): a picture, and optionally a button with a name, a link and one of two colours -----
+const bannerOut = (slug, b) => ({ id: b.id, photo: `/api/photo/${slug}/${b.photo}`, btn: !!b.btn, label: b.label || "", link: b.link || "", color: b.color === "yellow" ? "yellow" : "purple" });
+function bannerFields(b) {
+  const btn = !!b.btn, label = clean(b.label, 20), link = clean(b.link, 300), color = b.color === "yellow" ? "yellow" : "purple";
+  if (btn && !label) throw new Bad("Type a name for the button.");
+  if (btn && link && !(/^https?:\/\/[^\s]+$/i.test(link) || /^(tel|mailto):[^\s]+$/i.test(link) || !/[:\/\\<>]/.test(link))) throw new Bad("The link should be a web address starting with https://, or the exact name of one of your categories.");
+  return { btn, label: btn ? label : "", link: btn ? link : "", color };
+}
+const bannersOf = async req => ((await store(req.params.slug).get()).data() || {}).banners || [];
+app.get(m + "/banners", auth, ownerOnly, h(async (req, res) => res.json((await bannersOf(req)).map(b => bannerOut(req.params.slug, b)))));
+app.post(m + "/banners", auth, ownerOnly, h(async (req, res) => {
+  const list = await bannersOf(req); if (list.length >= 8) throw new Bad("You can have up to 8 banners.");
+  const f = bannerFields(req.body), im = readImg(req.body.data, 450 * 1024), id = crypto.randomBytes(6).toString("hex"), photo = crypto.randomBytes(8).toString("hex");
+  await sub(req, "photos").doc(photo).set({ type: im.type, b64: im.b64, createdAt: stamp() });
+  await store(req.params.slug).update({ banners: [...list, { id, photo, ...f }] }); res.json({ ok: true, id });
+}));
+app.put(m + "/banners/:id", auth, ownerOnly, h(async (req, res) => {
+  const list = await bannersOf(req), i = list.findIndex(b => b.id === req.params.id); if (i < 0) throw new Bad("Banner not found.", 404);
+  const f = bannerFields(req.body), cur = list[i]; let photo = cur.photo;
+  if (req.body.data) { const im = readImg(req.body.data, 450 * 1024); photo = crypto.randomBytes(8).toString("hex"); await sub(req, "photos").doc(photo).set({ type: im.type, b64: im.b64, createdAt: stamp() }); }
+  const next = list.map((b, k) => k === i ? { id: cur.id, photo, ...f } : b); await store(req.params.slug).update({ banners: next });
+  if (photo !== cur.photo) await sub(req, "photos").doc(cur.photo).delete(); res.json({ ok: true });
+}));
+app.delete(m + "/banners/:id", auth, ownerOnly, h(async (req, res) => {
+  const list = await bannersOf(req), b = list.find(x => x.id === req.params.id); if (!b) return res.json({ ok: true });
+  await store(req.params.slug).update({ banners: list.filter(x => x.id !== b.id) }); await sub(req, "photos").doc(b.photo).delete(); res.json({ ok: true });
+}));
+app.post(m + "/banners/:id/move", auth, ownerOnly, h(async (req, res) => {
+  const list = await bannersOf(req), i = list.findIndex(b => b.id === req.params.id), j = req.body.dir === "up" ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= list.length) return res.json({ ok: true }); [list[i], list[j]] = [list[j], list[i]];
+  await store(req.params.slug).update({ banners: list }); res.json({ ok: true });
 }));
 
 // ----- Products: import from a file (owner only) -----

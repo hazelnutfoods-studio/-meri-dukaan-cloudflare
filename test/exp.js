@@ -64,5 +64,19 @@ let pass = 0; const ok = (c, m) => { assert(c, m); pass++; console.log("ok -", m
   r = await call(M + "/features/best/reset", "POST"); ok(r.s === 200 && r.j.changed >= 1, "reset to automatic: " + JSON.stringify(r.j));
   pp = await pub(); ok(pp.bs === "", "choice cleared by the reset");
   r = await call(M + "/features/nope/reset", "POST"); ok(r.s === 400, "unknown feature refused");
+  // ---- homepage banners ----
+  r = await call(M + "/banners", "POST", { data: jpg, btn: true, label: "Shop now", link: "Milk Chocolate", color: "yellow" }); ok(r.s === 200 && r.j.id, "banner with button saved");
+  r = await call(M + "/banners", "POST", { data: jpg, btn: true, label: "", link: "", color: "purple" }); ok(r.s === 400 && /name for the button/.test(r.j.error), "button needs a name");
+  r = await call(M + "/banners", "POST", { data: jpg, btn: true, label: "Go", link: "javascript:alert(1)", color: "purple" }); ok(r.s === 400, "script links refused");
+  r = await call(M + "/banners", "POST", { data: "nope" }); ok(r.s === 400, "banner needs a photo");
+  r = await call(M + "/banners", "POST", { data: jpg, btn: false, label: "ignored", link: "https://x.com", color: "purple" }); ok(r.s === 200, "banner without a button saved");
+  r = await call(M + "/banners", "POST", { data: jpg, btn: true, label: "WhatsApp", link: "https://wa.me/919167359045", color: "purple" }); ok(r.s === 200, "web link accepted");
+  let bl = (await call(M + "/banners")).j; ok(bl.length === 3 && bl[0].label === "Shop now" && bl[0].color === "yellow" && bl[1].btn === false && bl[1].label === "", "owner list: " + bl.map(x => x.label || "-").join(","));
+  shop = await (await fetch(U + "/api/store/asha?" + Date.now())).json(); ok(shop.banners.length === 3 && /^\/api\/photo\//.test(shop.banners[0].photo) && shop.banners[0].link === "Milk Chocolate", "shop gets the banners");
+  const bim = await fetch(U + shop.banners[0].photo); ok(bim.status === 200 && (await bim.arrayBuffer()).byteLength > 50, "banner picture is served");
+  r = await call(M + "/banners/" + bl[0].id, "PUT", { btn: true, label: "Buy", link: "", color: "purple" }); bl = (await call(M + "/banners")).j; ok(r.s === 200 && bl[0].label === "Buy" && bl[0].color === "purple", "banner edited");
+  r = await call(M + "/banners/" + bl[0].id + "/move", "POST", { dir: "down" }); bl = (await call(M + "/banners")).j; ok(bl[1].label === "Buy", "banner moved down");
+  r = await call(M + "/banners/" + bl[1].id, "DELETE"); bl = (await call(M + "/banners")).j; ok(bl.length === 2, "banner deleted");
+  const nb = await fetch(U + M + "/banners", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: jpg }) }); ok(nb.status === 401, "only the owner can add banners");
   console.log("EXPIRY+BARCODE: ALL " + pass + " PASSED"); srv.close(); process.exit(0);
 })().catch(e => { console.log("FAILED", e.message); process.exit(1); });

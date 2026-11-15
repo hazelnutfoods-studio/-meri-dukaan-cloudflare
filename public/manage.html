@@ -58,7 +58,8 @@ input[type=date]{min-width:0;max-width:100%;display:block;-webkit-appearance:non
 .chips{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;margin:0 -18px 12px;padding:0 18px;scrollbar-width:none;-ms-overflow-style:none}.chips::-webkit-scrollbar,.hs::-webkit-scrollbar{display:none;width:0;height:0}.chips button{flex:none;white-space:nowrap;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 15px;font-size:.88rem;font-weight:600;cursor:pointer}.chips button.on{background:var(--ac);border-color:var(--ac);color:var(--on)}
 .pr{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin-bottom:8px;cursor:pointer;width:100%;text-align:left;color:var(--ink)}.pr.crit{border-color:var(--er)}
 .pr .pic{width:46px;height:46px;border-radius:12px;overflow:hidden;background:#fff;flex:none;display:grid;place-items:center;border:1px solid var(--line)}.pr .pic img{width:100%;height:100%;object-fit:contain}.pr .pic.tile{border:0}
-.pr .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pr .rt{text-align:right;flex:none}.pr .rt b{display:block;font-size:.98rem;margin-bottom:3px}.pr .grow{min-width:0}.ex2{text-align:right;flex:none;min-width:58px;margin:0 8px}.ex2 span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.ex2 b{display:block;font-size:.88rem}.tgopen{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:var(--ink);cursor:pointer;font:inherit}.tpic{width:56px;height:56px;border-radius:16px;background:var(--bg,#f3f4f7);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;flex:none;cursor:pointer;color:var(--mute)}.tpic img{width:100%;height:100%;object-fit:cover}.pr .ex{text-align:center;flex:none;min-width:58px}.pr .ex span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.pr .ex b{display:block;font-size:.92rem}.pr .ex b.er{color:var(--er);background:none;padding:0}.pr .ex b.wn{color:#b26a00;background:none;padding:0}.pr .ex b{background:none;padding:0}.pr .ex i{display:block;font-style:normal;font-size:.7rem;color:var(--mute)}
+.pr .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pr .rt{text-align:right;flex:none}.pr .rt b{display:block;font-size:.98rem;margin-bottom:3px}.pr .grow{min-width:0}.ex2{text-align:right;flex:none;min-width:58px;margin:0 8px}.ex2 span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.ex2 b{display:block;font-size:.88rem}.bprev{position:relative;aspect-ratio:1050/588;border-radius:16px;overflow:hidden;background:#f3f4f7;display:grid;place-items:center}.bprev img{width:100%;height:100%;object-fit:cover;display:block}.bbtn{position:absolute;left:10px;bottom:10px;padding:6px 14px;border-radius:999px;font-weight:800;font-size:.8rem}.bbtn.purple{background:#4B2A85;color:#fff;border:2px solid #fff}.bbtn.yellow{background:#FFD84D;color:#2a1650}.cpill{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer}.cpill i{width:16px;height:16px;border-radius:50%;display:inline-block}.cpill.on{border-color:var(--ac,#4f46e5);box-shadow:0 0 0 2px var(--ac,#4f46e5) inset}
+.tgopen{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:var(--ink);cursor:pointer;font:inherit}.tpic{width:56px;height:56px;border-radius:16px;background:var(--bg,#f3f4f7);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;flex:none;cursor:pointer;color:var(--mute)}.tpic img{width:100%;height:100%;object-fit:cover}.pr .ex{text-align:center;flex:none;min-width:58px}.pr .ex span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.pr .ex b{display:block;font-size:.92rem}.pr .ex b.er{color:var(--er);background:none;padding:0}.pr .ex b.wn{color:#b26a00;background:none;padding:0}.pr .ex b{background:none;padding:0}.pr .ex i{display:block;font-style:normal;font-size:.7rem;color:var(--mute)}
 .ord-tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:10px}.ord-tabs button{border:0;border-radius:12px;background:transparent;color:var(--mute);font-weight:650;padding:10px 6px;cursor:pointer;white-space:nowrap}.ord-tabs button.on{background:var(--ac);color:var(--on)}
 .cnt{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.25);font-size:.78rem;margin-left:4px}
 .intro{display:flex;gap:8px;align-items:center;color:var(--mute);margin:4px 0 14px}.intro svg.i{width:18px;height:18px}
@@ -1165,7 +1166,7 @@ function vAcct() {
     <label>Phone number<div class="ph-row"><div class="pre">+91</div><input id="acp" style="margin:5px 0 12px" inputmode="tel" value="${esc(pf.phone)}" autocomplete="tel"></div></label></div>
   ${owner() && SUM ? `<div class="card"><div class="cap">Safety and totals</div>${SUM.secretSet ? `<div class="intro">${ic("check")}<span>Invoice links and staff logins have their own private secret, so changing your admin password will not break them.</span></div>` : `<div class="intro" style="border-color:var(--wn)">${ic("info")}<span><b>Do this once:</b> invoice links and staff logins are currently locked with your admin password. If you ever change that password, every invoice link you already sent stops working and staff are logged out. Add a private <b>SESSION_SECRET</b> in Vercel to avoid that (the steps are in the README), ideally before you send many invoices.</span></div>`}<p class="mute" style="margin:10px 0 8px">Home's sales, profit and dues come from running totals kept as you work. If they ever look wrong, recount them from your orders.</p><button class="btn g wide" onclick="recalcTotals()">Recalculate totals</button></div>` : ""}
   <div class="card"><div class="cap">Appearance</div><div class="seg" data-gl="theme" style="display:flex;width:100%">${[["light", "Light"], ["dark", "Dark"], ["auto", "Match phone"]].map(([v, l]) => `<button style="flex:1" class="${theme() == v ? "on" : ""}" onclick="setTheme('${v}')">${l}</button>`).join("")}</div><p class="mute" style="margin:10px 0 0">Saved on this phone. “Match phone” follows your phone’s own Light or Dark setting.</p></div>
-  <div class="rows">${owner() ? `<button onclick="newKey()">${ic("key")}<span class="grow">Make a new store key</span>${ic("chev")}</button><button onclick="openBusiness()">${ic("building")}<span class="grow">Business details</span>${ic("chev")}</button>` : `<button onclick="openPassword()">${ic("lock")}<span class="grow">Change password</span>${ic("chev")}</button>`}<button class="red" onclick="logout()">${ic("out")}<span class="grow">Log out</span></button></div>`;
+  <div class="rows">${owner() ? `<button onclick="openBanners()">${ic("layers")}<span class="grow">Homepage banners</span>${ic("chev")}</button><button onclick="openBusiness()">${ic("building")}<span class="grow">Business details</span>${ic("chev")}</button>` : `<button onclick="openPassword()">${ic("lock")}<span class="grow">Change password</span>${ic("chev")}</button>`}<button class="red" onclick="logout()">${ic("out")}<span class="grow">Log out</span></button></div>`;
 }
 const recalcTotals = () => act(async () => { await api(base + "/summary/rebuild", "POST"); alert("Totals recalculated."); });
 async function saveAccount() {
@@ -1554,6 +1555,65 @@ async function tagToggle(id, pid, on, refresh) {
 function addTag(e) { e.preventDefault(); const n = e.target.elements.name.value; act(() => api(base + "/tags", "POST", { name: n })); }
 const moveTag = (id, dir) => act(() => api(base + "/tags/" + id + "/move", "POST", { dir }));
 function delTag(id) { if (confirm("Delete this tag? Products keep existing but lose the tag.")) act(() => api(base + "/tags/" + id, "DELETE")); }
+
+
+// ----- homepage banners (owner) -----
+let BN = [], BF = { id: "", data: "", color: "purple" };
+function shrinkBanner(file) {
+  return new Promise((ok, no) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => {
+      const W = 1050, H = 588, c = document.createElement("canvas"); c.width = W; c.height = H;
+      const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, k = Math.max(W / iw, H / ih), w = iw * k, h = ih * k, x = c.getContext("2d");
+      x.fillStyle = "#fff"; x.fillRect(0, 0, W, H); x.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); URL.revokeObjectURL(u);
+      let q = .85, d = c.toDataURL("image/jpeg", q); while (d.length * .75 > 420 * 1024 && q > .4) { q -= .1; d = c.toDataURL("image/jpeg", q); }
+      d.length * .75 > 440 * 1024 ? no(new Error("That picture is too detailed to shrink enough. Please try another one.")) : ok(d);
+    };
+    img.onerror = () => no(new Error("Could not read that photo.")); img.src = u;
+  });
+}
+async function openBanners() {
+  try { BN = await api(base + "/banners"); } catch (e) { return alert(e.message); }
+  modal(`<h2 style="font-size:1.2rem;margin-bottom:4px">Homepage banners</h2><p class="mute" style="margin:0 0 12px">Pictures at the top of your shop's home page. With more than one, customers swipe through them. With none, the shop shows its standard purple banner.</p>
+  ${BN.map((b, i) => `<div class="card" style="padding:10px"><div class="bprev"><img src="${esc(b.photo)}" alt="">${b.btn ? `<span class="bbtn ${b.color}">${esc(b.label)}</span>` : ""}</div>
+    <div class="row" style="justify-content:space-between;margin-top:8px;gap:6px"><div class="row"><button class="btn g sm" ${i ? "" : "disabled"} onclick="moveBanner('${b.id}','up')" aria-label="Move earlier">↑</button><button class="btn g sm" ${i < BN.length - 1 ? "" : "disabled"} onclick="moveBanner('${b.id}','down')" aria-label="Move later">↓</button></div><div class="row"><button class="btn g sm" onclick="openBanner('${b.id}')">Edit</button><button class="btn g sm" onclick="delBanner('${b.id}')">Delete</button></div></div></div>`).join("") || '<p class="mute">No banners yet.</p>'}
+  <button class="btn" style="margin-top:6px" onclick="openBanner('')" ${BN.length >= 8 ? "disabled" : ""}>+ Add banner</button>`);
+  $("dlg").classList.add("tall");
+}
+function bannerPrev() {
+  const v = $("bpv"); if (!v) return; let s = v.querySelector(".bbtn"); if (s) s.remove();
+  if ($("bbt").checked && $("bbl").value.trim()) { s = document.createElement("span"); s.className = "bbtn " + BF.color; s.textContent = $("bbl").value.trim(); v.appendChild(s); }
+}
+function bannerColor(c) { BF.color = c; document.querySelectorAll("#bcol .cpill").forEach(b => b.classList.toggle("on", b.dataset.c == c)); bannerPrev(); }
+function openBanner(id) {
+  const b = BN.find(x => x.id == id) || { btn: false, label: "", link: "", color: "purple", photo: "" };
+  BF = { id, data: "", color: b.color === "yellow" ? "yellow" : "purple" };
+  modal(`<h2 style="font-size:1.2rem;margin-bottom:10px">${id ? "Edit banner" : "New banner"}</h2>
+  <div class="bprev" id="bpv">${b.photo ? `<img src="${esc(b.photo)}" alt="">` : '<span class="mute">No photo yet</span>'}${b.btn ? `<span class="bbtn ${BF.color}">${esc(b.label)}</span>` : ""}</div>
+  <label class="btn g" for="bpf" style="display:block;text-align:center;cursor:pointer;margin-top:8px">${b.photo ? "Change photo" : "Choose photo"}</label><input id="bpf" type="file" accept="image/*" hidden onchange="pickBanner(this)">
+  <p class="mute" style="margin:6px 0 12px">Best size: 1050 × 590 pixels (wide). Other shapes are cropped to fit.</p>
+  <label class="ck" style="margin:0 0 8px"><input type="checkbox" id="bbt" ${b.btn ? "checked" : ""} onchange="$('bbx').hidden=!this.checked;bannerPrev()"> <span><b>Add a button</b></span></label>
+  <div id="bbx" ${b.btn ? "" : "hidden"}>
+    <label>Button name<input id="bbl" maxlength="20" value="${esc(b.label)}" placeholder="e.g. Shop now" oninput="bannerPrev()" autocomplete="off"></label>
+    <label>Link<input id="bbk" value="${esc(b.link)}" placeholder="https://… or a category name" autocapitalize="none" autocomplete="off"></label>
+    <p class="mute" style="margin:2px 0 10px">Where the button goes: a web address (for example a WhatsApp link) or the exact name of one of your categories. Leave it empty to open all products.</p>
+    <div class="cap" style="margin-bottom:6px">Button colour</div><div class="row" id="bcol" style="gap:10px"><button type="button" class="cpill ${BF.color == "purple" ? "on" : ""}" data-c="purple" onclick="bannerColor('purple')"><i style="background:#4B2A85"></i>Purple</button><button type="button" class="cpill ${BF.color == "yellow" ? "on" : ""}" data-c="yellow" onclick="bannerColor('yellow')"><i style="background:#FFD84D"></i>Yellow</button></div>
+  </div>
+  <div class="acts" style="margin-top:16px"><button class="btn g grow" onclick="openBanners()">Cancel</button><button class="btn grow" id="bsv" onclick="saveBanner()">Save banner</button></div>`);
+  $("dlg").classList.add("tall");
+}
+async function pickBanner(el) {
+  const f = el.files[0]; if (!f) return;
+  try { BF.data = await shrinkBanner(f); const v = $("bpv"); v.querySelectorAll("img,.mute").forEach(x => x.remove()); const im = document.createElement("img"); im.src = BF.data; v.prepend(im); } catch (e) { alert(e.message); }
+}
+async function saveBanner() {
+  if (!BF.id && !BF.data) return alert("Choose a photo first.");
+  const body = { btn: $("bbt").checked, label: $("bbl").value, link: $("bbk").value, color: BF.color, ...(BF.data ? { data: BF.data } : {}) };
+  $("bsv").disabled = true;
+  try { await api(base + "/banners" + (BF.id ? "/" + BF.id : ""), BF.id ? "PUT" : "POST", body); openBanners(); } catch (e) { alert(e.message); $("bsv").disabled = false; }
+}
+async function moveBanner(id, dir) { try { await api(base + "/banners/" + id + "/move", "POST", { dir }); openBanners(); } catch (e) { alert(e.message); } }
+async function delBanner(id) { if (!confirm("Delete this banner?")) return; try { await api(base + "/banners/" + id, "DELETE"); openBanners(); } catch (e) { alert(e.message); } }
 
 // ----- staff (owner) -----
 function vUsr() {
