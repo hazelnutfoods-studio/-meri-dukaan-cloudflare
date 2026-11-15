@@ -248,6 +248,7 @@ function cats() {
     <div class="chips"><button class="${tag ? "" : "on"}" onclick="tag='';render()">All</button>${shop.tags.map(t => `<button class="${tag === t ? "on" : ""}" data-t="${esc(t)}" onclick="tag=this.dataset.t;render()">${esc(t)}</button>`).join("")}</div>
     ${list.length ? `<div class="grid">${groups(list).map(p => card(p, "", 1)).join("")}</div>` : '<p class="empty">Nothing here yet.</p>'}`;
 }
+const monthYear = d => /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? new Date(d + "T12:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "";
 const hits = () => { const s = q.trim().toLowerCase(); return s ? shop.products.filter(p => [p.name, p.brand, p.description, p.o1, p.o2, ...p.tags].join(" ").toLowerCase().includes(s)) : []; };
 const recent = () => { try { return JSON.parse(LS.get("recent") || "[]") || []; } catch (e) { return []; } };
 function saveRecent(t) { t = (t || "").trim(); if (!t) return; LS.set("recent", JSON.stringify([t, ...recent().filter(x => x.toLowerCase() !== t.toLowerCase())].slice(0, 6))); }
@@ -274,7 +275,7 @@ function product() {
   const wt = p.o2 ? `<div class="olab">${L[1].toUpperCase()}</div><div class="opts">${vals("o2").map(v => `<button class="${p.o2 === v ? "on" : ""} ${oosv("o2", v) ? "oos" : ""}" data-v="${esc(v)}" onclick="pickOpt('${p.id}',1,this.dataset.v)">${esc(v)}</button>`).join("")}</div>` : "";
   const n = cart[p.id] || 0, so = left(p) <= 0, photos = p.photos, ph = Math.min(pimg, Math.max(photos.length - 1, 0)), kind = (p.tags[0] || "product").toLowerCase();
   const pill = so ? '<span class="pill bad stk">Out of stock</span>' : `<span class="pill ok stk"><i></i>In stock${p.qty === null ? "" : " · " + p.qty + " left"}</span>`;
-  const rows = [["Brand", p.brand ? `<button class="lk bl" data-b="${esc(p.brand)}" onclick="go('brand',this.dataset.b)">${esc(p.brand)} ${ic("chev", 14, 2.6)}</button>` : ""], ["Category", p.tags[0]], ["Flavour", p.o1], ["Weight", p.o2]].filter(r => r[1]);
+  const rows = [["Brand", p.brand ? `<button class="lk bl" data-b="${esc(p.brand)}" onclick="go('brand',this.dataset.b)">${esc(p.brand)} ${ic("chev", 14, 2.6)}</button>` : ""], ["Category", p.tags[0]], ["Flavour", p.o1], ["Weight", p.o2], ["Expiry", monthYear(p.exp)]].filter(r => r[1]);
   const long = (p.description || "").length > 110;
   return `<div class="tb"><button class="back" aria-label="Back" onclick="back()">${ic("back")}</button><button class="back" aria-label="Save to wishlist" onclick="heart(event,'${p.id}')" style="${wished(p.id) ? "color:var(--red)" : ""}">${wished(p.id) ? heartFill(20) : ic("heart")}</button></div>
     <div class="hero"><div class="g" id="gal" onscroll="const c=Math.round(this.scrollLeft/this.clientWidth);if(c!==pimg){pimg=c;const k=document.getElementById('cnt');if(k)k.textContent=(c+1)+' / ${photos.length}';document.querySelectorAll('.thumbs button').forEach((b,i)=>b.classList.toggle('on',i===c))}">${photos.map(u => `<div><img src="${esc(u)}" alt="${esc(p.name)}"></div>`).join("") || `<div>${ic("bar", 90, 1.2)}</div>`}</div>${photos.length > 1 ? `<div class="cnt" id="cnt">${ph + 1} / ${photos.length}</div>` : ""}</div>

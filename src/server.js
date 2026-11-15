@@ -195,7 +195,7 @@ app.get("/api/store/:slug", h(async (req, res) => {
     name: s.data().name, maxQty: maxQtyOf(s.data()), phone: (s.data().business || {}).phone || "", tags: tg.docs.map(d => d.data().name),
     products: ps.docs.filter(d => !isExpired(d.data())).sort((a, b) => when(a) - when(b)).map(d => {
       const x = d.data(), photos = (x.photos || []).map(i => `/api/photo/${req.params.slug}/${i}`);
-      return { id: d.id, name: x.name, price: x.price, mrp: x.mrp > x.price ? x.mrp : 0, description: x.description || "", qty: x.qty == null ? null : sellable(x), tags: x.tags || [], group: x.mergeUnder || d.id, kind: x.kind || "general", brand: x.brand || "", o1: x.o1 || "", o2: x.o2 || "", sold: x.sold || 0, featured: !!x.featured, at: when(d), photos: photos.length ? photos : (x.image ? [x.image] : []) };
+      return { id: d.id, name: x.name, price: x.price, mrp: x.mrp > x.price ? x.mrp : 0, description: x.description || "", qty: x.qty == null ? null : sellable(x), tags: x.tags || [], group: x.mergeUnder || d.id, kind: x.kind || "general", brand: x.brand || "", o1: x.o1 || "", o2: x.o2 || "", sold: x.sold || 0, exp: x.qty === 0 ? "" : nextExpiry(batchesOf(x), x.expiry), featured: !!x.featured, at: when(d), photos: photos.length ? photos : (x.image ? [x.image] : []) };
     }),
     wa: waOf(s.data()), hasUpi: !!(s.data().business || {}).upi, rating: (s.data().rev || {}).n ? { n: s.data().rev.n, avg: Math.round(10 * s.data().rev.sum / s.data().rev.n) / 10 } : null,
     reviews: rv.docs.map(d => d.data()).map(r => ({ name: r.name, rating: r.rating, text: r.text, at: r.at })),
@@ -206,8 +206,8 @@ app.get("/api/store/:slug", h(async (req, res) => {
 app.get("/api/photo/:slug/:id", h(async (req, res) => {
   const d = await sub(req, "photos").doc(req.params.id).get();
   if (!d.exists) return res.status(404).end();
-  res.set({ "Content-Type": d.data().type, "Cache-Control": "public, max-age=31536000, immutable" });
-  res.send(d.data().data);
+  const x = d.data(); res.set({ "Content-Type": x.type, "Cache-Control": "public, max-age=31536000, immutable" });
+  res.send(x.b64 ? Buffer.from(x.b64, "base64") : x.data); // photos saved before this change are stored as raw bytes
 }));
 
 app.post("/api/store/:slug/orders", rateLimit({ windowMs: 10 * 60 * 1000, limit: 20 }), h(async (req, res) => {
@@ -421,12 +421,10 @@ app.put(m + "/account", auth, h(async (req, res) => {
   res.json({ ok: true });
 }));
 app.post(m + "/account/photo", auth, h(async (req, res) => {
-  const mt = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.data || ""));
-  if (!mt) throw new Bad("Please choose a photo.");
-  const buf = Buffer.from(mt[2], "base64"); if (buf.length > 300 * 1024) throw new Bad("That photo is too large.");
+  const im = readImg(req.body.data, 300 * 1024);
   const id = crypto.randomBytes(8).toString("hex"), owner = req.who.role === "owner";
   const ref = owner ? store(req.params.slug) : sub(req, "users").doc(req.who.uid), d = (await ref.get()).data(), old = (d.profile || {}).photo;
-  await sub(req, "photos").doc(id).set({ type: mt[1], data: buf, createdAt: stamp() });
+  await sub(req, "photos").doc(id).set({ type: im.type, b64: im.b64, createdAt: stamp() });
   await ref.update({ profile: { ...(d.profile || {}), photo: id } });
   if (old) await sub(req, "photos").doc(old).delete();
   res.json({ photo: photoUrl(req, id) });
@@ -613,9 +611,15 @@ app.get(m + "/products", auth, h(async (req, res) => {
 }));
 // ----- Barcode / EAN: find a product you already have, or fill in a new one from the free Open Food Facts list -----
 const bnorm = c => String(c || "").replace(/\D/g, "").replace(/^0+/, "");
+// products that use this barcode: the database looks for the few spellings a barcode can have (with or without leading zeros), so the whole product list is never loaded
+const barcodeForms = code => { const n = bnorm(code); return n ? [...new Set([n, String(code).replace(/\D/g, ""), ...[8, 12, 13, 14].map(k => n.padStart(k, "0"))])] : []; };
+async function barcodeOwners(req, code) {
+  const seen = new Map(); await Promise.all(barcodeForms(code).map(async f => (await sub(req, "products").where("barcode", "==", f).get()).docs.forEach(d => seen.set(d.id, d))));
+  return [...seen.values()].filter(d => bnorm(d.data().barcode) === bnorm(code));
+}
 async function checkBarcode(req, code, selfId) {
   if (!code) return;
-  const all = await sub(req, "products").get(), dup = all.docs.find(d => d.id !== selfId && bnorm(d.data().barcode) === bnorm(code));
+  const dup = (await barcodeOwners(req, code)).find(d => d.id !== selfId);
   if (dup) throw new Bad(`This barcode is already used by “${dup.data().name}”.`);
 }
 async function offLookup(code) {
@@ -631,7 +635,7 @@ async function offLookup(code) {
 app.get(m + "/barcode/:code", auth, need("add", "stock"), h(async (req, res) => {
   const code = String(req.params.code || "").replace(/\s+/g, "");
   if (!/^[0-9]{6,14}$/.test(code)) throw new Bad("That does not look like a barcode (6 to 14 digits).");
-  const all = await sub(req, "products").get(), mine = all.docs.find(d => bnorm(d.data().barcode) === bnorm(code));
+  const mine = (await barcodeOwners(req, code))[0];
   if (mine) return res.json({ code, mine: { id: mine.id, name: mine.data().name } });
   res.json({ code, found: can(req, "add") ? await offLookup(code) : null });
 }));
@@ -655,8 +659,8 @@ app.put(m + "/products/:id", auth, need("add", "stock", "cost", "tags"), h(async
   const ref = sub(req, "products").doc(req.params.id), ex = await ref.get();
   if (!ex.exists) throw new Bad("Product not found.");
   const u = await fields(req, req.body);
-  await checkBarcode(req, u.barcode, req.params.id);
-  await checkMerge(req, req.params.id, u.mergeUnder);
+  if (u.barcode !== undefined && bnorm(u.barcode) !== bnorm(ex.data().barcode)) await checkBarcode(req, u.barcode, req.params.id); // only when the barcode really changed
+  if (u.mergeUnder !== undefined && (u.mergeUnder || "") !== (ex.data().mergeUnder || "")) await checkMerge(req, req.params.id, u.mergeUnder);
   checkLive({ ...ex.data(), ...u }, ex.data());
   // Stock is changed against the latest number, never overwritten with an old copy:
   //  qtyDelta  = "+10 received" / "-2 damaged", added to whatever stock is now
@@ -703,16 +707,21 @@ app.delete(m + "/products/:id", auth, ownerOnly, h(async (req, res) => {
 }));
 
 // ----- photos (kept in Firestore, so no paid storage is needed) -----
+// A photo arrives as "data:image/jpeg;base64,...". It is kept as that text and not decoded or re-encoded, which keeps each upload within the free plan's tiny per-request computer time.
+const IMG_HEAD = /^data:(image\/(?:jpeg|png|webp));base64,/;
+function readImg(data, maxBytes) {
+  const t = String(data || ""), h = IMG_HEAD.exec(t.slice(0, 40)); if (!h) throw new Bad("Please choose a photo.");
+  const b64 = t.slice(h[0].length), tail = b64.slice(-8);
+  if (!b64.length || !/^[A-Za-z0-9+/=]+$/.test(b64.slice(0, 256)) || !/^[A-Za-z0-9+/=]+$/.test(tail)) throw new Bad("Please choose a photo.");
+  if (b64.length * 0.75 > maxBytes) throw new Bad("That photo is too large.");
+  return { type: h[1], b64 };
+}
 app.post(m + "/products/:id/photos", auth, need("add"), h(async (req, res) => {
   const ref = sub(req, "products").doc(req.params.id), p = await ref.get();
   if (!p.exists) throw new Bad("Product not found.");
   if ((p.data().photos || []).length >= 8) throw new Bad("You can add up to 8 photos per product.");
-  const mt = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.data || ""));
-  if (!mt) throw new Bad("Please choose a photo.");
-  const buf = Buffer.from(mt[2], "base64");
-  if (buf.length > 500 * 1024) throw new Bad("That photo is too large.");
-  const id = crypto.randomBytes(8).toString("hex");
-  await sub(req, "photos").doc(id).set({ type: mt[1], data: buf, createdAt: stamp() });
+  const im = readImg(req.body.data, 500 * 1024), id = crypto.randomBytes(8).toString("hex");
+  await sub(req, "photos").doc(id).set({ type: im.type, b64: im.b64, createdAt: stamp() });
   await ref.update({ photos: FV.arrayUnion(id) });
   res.json({ id });
 }));
@@ -1193,7 +1202,7 @@ async function invoiceData(req) { // everything an invoice page or PDF needs; nu
   const d = o.data();
   const lines = await Promise.all((d.lines || []).map(async l => {
     let ph = l.photo; if (!ph && l.id) { const p = await sub(req, "products").doc(l.id).get(); ph = p.exists ? (p.data().photos || [])[0] : ""; }
-    return { name: l.name, qty: l.qty, price: l.price, amount: l.price * l.qty, photo: ph ? `/api/photo/${req.params.slug}/${ph}` : "" };
+    return { name: l.name, qty: l.qty, price: l.price, amount: l.price * l.qty, expiry: [...new Set((l.alloc || []).map(a => a.expiry).filter(Boolean))].sort(), photo: ph ? `/api/photo/${req.params.slug}/${ph}` : "" };
   }));
   return ({ store: s.data().name, number: d.number, date: d.createdAt ? d.createdAt.toDate().toISOString() : null, name: d.name, phone: d.phone, address: d.address,
     lines, subtotal: d.subtotal == null ? d.total : d.subtotal, discount: d.discount || 0, gstRate: d.gstRate || 0, gst: d.gst || 0, packing: d.packing || 0, delivery: d.delivery || 0, notes: d.notes || "", channel: d.channel || "online",
@@ -1235,7 +1244,7 @@ function pdfInvoice(doc, d) {
     if (y + h > 740) { doc.addPage(); y = head(40); }
     doc.roundedRect(L, y, 36, 36, 9).fill(LV);
     doc.font("B").fontSize(10.5).fillColor(INK).text(l.name, L + 48, y + 2, { width: 330 });
-    doc.font("R").fontSize(9.5).fillColor(MU).text(l.qty + " × " + money(l.price), L + 48, doc.y + 1, { width: 330 });
+    doc.font("R").fontSize(9.5).fillColor(MU).text(l.qty + " × " + money(l.price) + ((l.expiry || []).length ? "  ·  Exp " + l.expiry.map(e => new Date(e + "T12:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" })).join(", ") : ""), L + 48, doc.y + 1, { width: 330 });
     doc.font("B").fontSize(10.5).fillColor(INK).text(money(l.amount), R - 100, y + 2, { width: 100, align: "right" });
     y += h;
   }

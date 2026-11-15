@@ -6,7 +6,7 @@
     "dev": "wrangler dev --local --persist-to .wrangler-state",
     "deploy": "wrangler deploy",
     "schema": "node scripts/make-schema.js",
-    "test": "node test/be.js && node test/be2.js && node test/bc.js && node test/nw.js && node test/sf.js && node test/ui.js"
+    "test": "node test/be.js && node test/be2.js && node test/bc.js && node test/nw.js && node test/sf.js && node test/ui.js && node test/exp.js"
   },
   "dependencies": {
     "express": "^4.19.2",

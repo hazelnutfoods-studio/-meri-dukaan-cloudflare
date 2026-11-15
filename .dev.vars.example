@@ -1,0 +1,8 @@
+# For trying the app on your own computer (npm run dev). Copy this file to .dev.vars and fill it in.
+ADMIN_PASSWORD=choose-a-long-password
+SESSION_SECRET=any-long-random-text
+STORE_NAME=My Store
+STORE_SLUG=mystore
+# optional, for the customer email login:
+# BREVO_API_KEY=
+# FROM_EMAIL=My Shop <you@gmail.com>
