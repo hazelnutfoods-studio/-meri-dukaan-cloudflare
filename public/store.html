@@ -38,7 +38,7 @@ button{cursor:pointer}a{color:inherit}
 .pc .pim{position:relative;height:116px;border-radius:14px;background:var(--lav);display:flex;align-items:center;justify-content:center;font-size:2.4rem;overflow:hidden}.grid .pc .pim{height:128px}.pc .pim.b{background:var(--ye2)}.pc .pim img{width:96px;height:96px;object-fit:contain}.grid .pc .pim img{width:108px;height:108px}
 .pc .bg{position:absolute;left:8px;top:8px;padding:3px 8px;border-radius:999px;background:var(--ye);color:var(--ink);font-size:10px;font-weight:800;letter-spacing:.04em}
 .pc .hr{position:absolute;right:8px;top:8px;width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--mute);border:none;padding:0}.pc .hr.on{color:var(--red)}
-.pc .br{margin-top:10px;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--mute);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .br{min-height:1.4em;margin-top:10px;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--mute);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pc .nm{margin-top:2px;min-height:36px;font-size:15px;font-weight:700;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pc .sbl{margin-top:2px;font-size:12px;color:var(--mute);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:16px}
 .pc .pr{margin-top:10px;display:flex;align-items:center;justify-content:space-between}.pc .pr b{display:block;font-size:17px;font-weight:800;line-height:1.1}.pc .pr s{font-size:12px;color:var(--mute)}
@@ -247,11 +247,12 @@ function home() {
     ${ps.length ? "" : '<p class="empty">No products yet. Please check back soon.</p>'}`;
 }
 function cats() {
-  const list = tag ? shop.products.filter(p => p.tags.includes(tag)) : shop.products;
+  // a category shows every product in it, each flavour or size on its own, including variants merged under a product that has the tag
+  const gset = new Set(tag ? shop.products.filter(p => p.tags.includes(tag)).map(p => p.group) : []), list = tag ? shop.products.filter(p => gset.has(p.group)) : shop.products;
   return hdr("Categories", { back: false, bell: 1 }) + `<div class="sb"><label class="in">${ic("search")}<input type="search" aria-label="Search" placeholder="Search in all products" onfocus="this.blur();go('search')"></label></div>
     <div class="sh"><h2>${esc(tag || "All products")}</h2></div>
     <div class="chips"><button class="${tag ? "" : "on"}" onclick="tag='';render()">All</button>${shop.tags.map(t => `<button class="${tag === t ? "on" : ""}" data-t="${esc(t)}" onclick="tag=this.dataset.t;render()">${esc(t)}</button>`).join("")}</div>
-    ${list.length ? `<div class="grid">${groups(list).map(p => card(p, "", 1)).join("")}</div>` : '<p class="empty">Nothing here yet.</p>'}`;
+    ${list.length ? `<div class="grid">${(tag ? list : groups(list)).map(p => card(p, "", 1)).join("")}</div>` : '<p class="empty">Nothing here yet.</p>'}`;
 }
 const monthYear = d => /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? new Date(d + "T12:00:00").toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "";
 const hits = () => { const s = q.trim().toLowerCase(); return s ? shop.products.filter(p => [p.name, p.brand, p.description, p.o1, p.o2, ...p.tags].join(" ").toLowerCase().includes(s)) : []; };
