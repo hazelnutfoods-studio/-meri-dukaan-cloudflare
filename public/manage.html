@@ -58,7 +58,7 @@ input[type=date]{min-width:0;max-width:100%;display:block;-webkit-appearance:non
 .chips{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;margin:0 -18px 12px;padding:0 18px;scrollbar-width:none;-ms-overflow-style:none}.chips::-webkit-scrollbar,.hs::-webkit-scrollbar{display:none;width:0;height:0}.chips button{flex:none;white-space:nowrap;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 15px;font-size:.88rem;font-weight:600;cursor:pointer}.chips button.on{background:var(--ac);border-color:var(--ac);color:var(--on)}
 .pr{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px;margin-bottom:8px;cursor:pointer;width:100%;text-align:left;color:var(--ink)}.pr.crit{border-color:var(--er)}
 .pr .pic{width:46px;height:46px;border-radius:12px;overflow:hidden;background:#fff;flex:none;display:grid;place-items:center;border:1px solid var(--line)}.pr .pic img{width:100%;height:100%;object-fit:contain}.pr .pic.tile{border:0}
-.pr .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pr .rt{text-align:right;flex:none}.pr .rt b{display:block;font-size:.98rem;margin-bottom:3px}.pr .grow{min-width:0}.ex2{text-align:right;flex:none;min-width:58px;margin:0 8px}.ex2 span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.ex2 b{display:block;font-size:.88rem}.pr .ex{text-align:center;flex:none;min-width:58px}.pr .ex span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.pr .ex b{display:block;font-size:.92rem}.pr .ex b.er{color:var(--er);background:none;padding:0}.pr .ex b.wn{color:#b26a00;background:none;padding:0}.pr .ex b{background:none;padding:0}.pr .ex i{display:block;font-style:normal;font-size:.7rem;color:var(--mute)}
+.pr .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pr .rt{text-align:right;flex:none}.pr .rt b{display:block;font-size:.98rem;margin-bottom:3px}.pr .grow{min-width:0}.ex2{text-align:right;flex:none;min-width:58px;margin:0 8px}.ex2 span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.ex2 b{display:block;font-size:.88rem}.tgopen{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:var(--ink);cursor:pointer;font:inherit}.tpic{width:56px;height:56px;border-radius:16px;background:var(--bg,#f3f4f7);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden;flex:none;cursor:pointer;color:var(--mute)}.tpic img{width:100%;height:100%;object-fit:cover}.pr .ex{text-align:center;flex:none;min-width:58px}.pr .ex span{display:block;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;color:var(--mute)}.pr .ex b{display:block;font-size:.92rem}.pr .ex b.er{color:var(--er);background:none;padding:0}.pr .ex b.wn{color:#b26a00;background:none;padding:0}.pr .ex b{background:none;padding:0}.pr .ex i{display:block;font-style:normal;font-size:.7rem;color:var(--mute)}
 .ord-tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:10px}.ord-tabs button{border:0;border-radius:12px;background:transparent;color:var(--mute);font-weight:650;padding:10px 6px;cursor:pointer;white-space:nowrap}.ord-tabs button.on{background:var(--ac);color:var(--on)}
 .cnt{display:inline-block;min-width:22px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,.25);font-size:.78rem;margin-left:4px}
 .intro{display:flex;gap:8px;align-items:center;color:var(--mute);margin:4px 0 14px}.intro svg.i{width:18px;height:18px}
@@ -1140,13 +1140,13 @@ async function createInvoice() {
 }
 
 // ----- Account -----
-function shrinkAvatar(file) {
+function shrinkAvatar(file, S0, q0) {
   return new Promise((ok, no) => {
     const img = new Image(), u = URL.createObjectURL(file);
     img.onload = () => {
-      const S = 480, c = document.createElement("canvas"); c.width = S; c.height = S;
+      const S = S0 || 480, c = document.createElement("canvas"); c.width = S; c.height = S;
       const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, k = Math.max(S / iw, S / ih), w = iw * k, h = ih * k, x = c.getContext("2d");
-      x.fillStyle = "#fff"; x.fillRect(0, 0, S, S); x.drawImage(img, (S - w) / 2, (S - h) / 2, w, h); URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", .82));
+      x.fillStyle = "#fff"; x.fillRect(0, 0, S, S); x.drawImage(img, (S - w) / 2, (S - h) / 2, w, h); URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", q0 || .82));
     };
     img.onerror = () => no(new Error("Could not read that photo.")); img.src = u;
   });
@@ -1463,8 +1463,48 @@ function delSup(id) { if (confirm("Delete this supplier? Products keep the name.
 function vTag() {
   return `<form class="card" onsubmit="addTag(event)"><b>Add a tag</b><p class="mute">Each tag becomes a section on your online store, like “Bestsellers” or “Snacks”. Products with no tag appear under “More items”. Staff can put products into tags, but only you can create them.</p>
   <div class="row" style="flex-wrap:nowrap"><input name="name" placeholder="e.g. Bestsellers" required maxlength="30" style="margin:0"><button class="btn">Add</button></div></form>` +
-  (T.map((t, i) => `<div class="card row" style="justify-content:space-between"><div><b>${esc(t.name)}</b><div class="mute">${P.filter(p => (p.tags || []).includes(t.name)).length} products</div></div>
-   <div class="row"><button class="btn g sm" ${i ? "" : "disabled"} onclick="moveTag('${t.id}','up')" aria-label="Move up">↑</button><button class="btn g sm" ${i < T.length - 1 ? "" : "disabled"} onclick="moveTag('${t.id}','down')" aria-label="Move down">↓</button><button class="btn g sm" onclick="delTag('${t.id}')">Delete</button></div></div>`).join("") || '<p class="mute">No tags yet.</p>');
+  (T.map((t, i) => `<div class="card row" style="justify-content:space-between;gap:8px"><button class="tgopen" onclick="openTag('${t.id}')"><span class="tpic">${t.photo ? `<img src="${esc(t.photo)}" alt="">` : ic("camera")}</span><span style="min-width:0"><b>${esc(t.name)}</b><span class="mute" style="display:block">${P.filter(p => (p.tags || []).includes(t.name)).length} products · tap to edit</span></span></button>
+   <div class="row" style="flex:none"><button class="btn g sm" ${i ? "" : "disabled"} onclick="moveTag('${t.id}','up')" aria-label="Move up">↑</button><button class="btn g sm" ${i < T.length - 1 ? "" : "disabled"} onclick="moveTag('${t.id}','down')" aria-label="Move down">↓</button></div></div>`).join("") || '<p class="mute">No tags yet.</p>');
+}
+const reopenTag = id => { draw(); openTag(id); };
+async function uploadTagPhoto(id, el) {
+  const f = el.files[0]; if (!f) return;
+  try { await api(base + "/tags/" + id + "/photo", "POST", { data: await shrinkAvatar(f, 360, .8) }); T = await api(base + "/tags"); reopenTag(id); } catch (e) { alert(e.message); }
+}
+async function delTagPhoto(id) { try { await api(base + "/tags/" + id + "/photo", "DELETE"); T = await api(base + "/tags"); reopenTag(id); } catch (e) { alert(e.message); } }
+// a tag's own page: name, photo, the products in it, and a way to add more
+function openTag(id) {
+  const t = T.find(x => x.id == id); if (!t) return closeM();
+  const ps = P.filter(p => (p.tags || []).includes(t.name));
+  modal(`<h2 style="font-size:1.2rem;margin-bottom:10px">Edit tag</h2>
+  <div class="row" style="gap:14px;flex-wrap:nowrap;margin-bottom:12px"><label class="tpic" style="width:76px;height:76px" for="tgp" aria-label="Add or change the photo">${t.photo ? `<img src="${esc(t.photo)}" alt="">` : ic("camera")}</label><input id="tgp" type="file" accept="image/*" hidden onchange="uploadTagPhoto('${id}',this)">
+    <div>${t.photo ? `<label for="tgp" class="lnk" style="cursor:pointer;display:block">Change photo</label><button class="lnk" onclick="delTagPhoto('${id}')">Remove photo</button>` : `<label for="tgp" class="lnk" style="cursor:pointer">Add photo</label><div class="mute">Shown on your shop's home page</div>`}</div></div>
+  <label>Tag name<input id="tgn" value="${esc(t.name)}" maxlength="30" autocomplete="off"></label>
+  <button class="btn" id="tgs" style="margin-top:8px" onclick="saveTagName('${id}')">Save name</button><p class="mute" style="margin:6px 0 0">A new name changes on every product that has this tag.</p>
+  <div class="row" style="justify-content:space-between;margin:18px 0 8px"><b>Products in this tag · ${ps.length}</b><button class="btn sm" onclick="openTagPick('${id}')">+ Add items</button></div>
+  ${ps.map(p => `<div class="pr" style="cursor:default">${picOf(p)}<div class="grow"><div class="nm">${esc(p.name)}</div><div class="mute">${esc(p.sku || "")}</div></div><button class="btn g sm" onclick="tagToggle('${id}','${p.id}',false,true)">Remove</button></div>`).join("") || '<p class="mute">No products yet. Press “+ Add items”.</p>'}
+  <button class="btn g" style="margin-top:14px;color:var(--er)" onclick="delTag('${id}')">Delete tag</button>`);
+  $("dlg").classList.add("tall");
+}
+async function saveTagName(id) {
+  const n = $("tgn").value.trim(); $("tgs").disabled = true;
+  try { await api(base + "/tags/" + id, "PUT", { name: n }); await load(); reopenTag(id); } catch (e) { alert(e.message); $("tgs").disabled = false; }
+}
+// pick products to put into the tag: search, then tick the box on the right
+const tagPickRows = (id, q) => { const t = T.find(x => x.id == id), s = (q || "").trim().toLowerCase(), list = P.filter(p => !s || [p.name, p.brand, p.sku].join(" ").toLowerCase().includes(s));
+  return list.map(p => `<label class="pr" style="cursor:pointer">${picOf(p)}<div class="grow"><div class="nm">${esc(p.name)}</div><div class="mute">${esc(p.sku || "No code")}</div></div><input type="checkbox" ${(p.tags || []).includes(t.name) ? "checked" : ""} onchange="tagToggle('${id}','${p.id}',this.checked)" style="width:24px;height:24px;margin:0;flex:none" aria-label="Put ${esc(p.name)} in ${esc(t.name)}"></label>`).join("") || '<p class="mute">No products match.</p>'; };
+function openTagPick(id) {
+  const t = T.find(x => x.id == id); if (!t) return;
+  modal(`<div class="row" style="justify-content:space-between;margin-bottom:8px"><button class="lnk" onclick="openTag('${id}')">← Done</button><b>Add items to ${esc(t.name)}</b><span style="width:48px"></span></div>
+  <div class="srch">${ic("search")}<input id="tgq" placeholder="Search products" oninput="$('tgl').innerHTML=tagPickRows('${id}',this.value)" autocomplete="off"></div><div id="tgl">${tagPickRows(id, "")}</div>`);
+  $("dlg").classList.add("tall");
+}
+async function tagToggle(id, pid, on, refresh) {
+  const t = T.find(x => x.id == id), p = P.find(x => x.id == pid); if (!t || !p) return;
+  const was = p.tags || [];
+  p.tags = on ? [...new Set([...was, t.name])] : was.filter(x => x !== t.name); // shows at once; undone if it cannot be saved
+  try { await api(base + "/tags/" + id + "/items", "POST", { product: pid, on: !!on }); if (refresh) reopenTag(id); else draw(); }
+  catch (e) { p.tags = was; alert(e.message); if (refresh) openTag(id); else { const q = $("tgq"); $("tgl").innerHTML = tagPickRows(id, q ? q.value : ""); } }
 }
 function addTag(e) { e.preventDefault(); const n = e.target.elements.name.value; act(() => api(base + "/tags", "POST", { name: n })); }
 const moveTag = (id, dir) => act(() => api(base + "/tags/" + id + "/move", "POST", { dir }));

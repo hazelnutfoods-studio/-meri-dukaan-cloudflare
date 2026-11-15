@@ -192,7 +192,7 @@ app.get("/api/store/:slug", h(async (req, res) => {
   if (!s.exists) return res.status(404).json({ error: "Store not found" });
   const [ps, tg, rv] = await Promise.all([sub(req, "products").where("active", "==", true).get(), sub(req, "tags").orderBy("pos").get(), sub(req, "reviews").orderBy("at", "desc").limit(6).get()]);
   const out = {
-    name: s.data().name, maxQty: maxQtyOf(s.data()), phone: (s.data().business || {}).phone || "", tags: tg.docs.map(d => d.data().name),
+    name: s.data().name, maxQty: maxQtyOf(s.data()), phone: (s.data().business || {}).phone || "", tags: tg.docs.map(d => d.data().name), tagPics: Object.fromEntries(tg.docs.filter(d => d.data().photo).map(d => [d.data().name, `/api/photo/${req.params.slug}/${d.data().photo}`])),
     products: ps.docs.filter(d => !isExpired(d.data())).sort((a, b) => when(a) - when(b)).map(d => {
       const x = d.data(), photos = (x.photos || []).map(i => `/api/photo/${req.params.slug}/${i}`);
       return { id: d.id, name: x.name, price: x.price, mrp: x.mrp > x.price ? x.mrp : 0, description: x.description || "", qty: x.qty == null ? null : sellable(x), tags: x.tags || [], group: x.mergeUnder || d.id, kind: x.kind || "general", brand: x.brand || "", o1: x.o1 || "", o2: x.o2 || "", sold: x.sold || 0, exp: x.qty === 0 ? "" : nextExpiry(batchesOf(x), x.expiry), featured: !!x.featured, at: when(d), photos: photos.length ? photos : (x.image ? [x.image] : []) };
@@ -737,7 +737,7 @@ app.delete(m + "/products/:id/photos/:pid", auth, need("add"), h(async (req, res
 
 // ----- tags: the owner makes them, staff can use them -----
 app.get(m + "/tags", auth, h(async (req, res) => {
-  const s = await sub(req, "tags").orderBy("pos").get(); res.json(s.docs.map(d => ({ id: d.id, name: d.data().name })));
+  const s = await sub(req, "tags").orderBy("pos").get(); res.json(s.docs.map(d => ({ id: d.id, name: d.data().name, photo: d.data().photo ? `/api/photo/${req.params.slug}/${d.data().photo}` : "" })));
 }));
 app.post(m + "/tags", auth, ownerOnly, h(async (req, res) => {
   const name = clean(req.body.name, 30); if (!name) throw new Bad("Enter a tag name.");
@@ -749,7 +749,41 @@ app.delete(m + "/tags/:id", auth, ownerOnly, h(async (req, res) => {
   const t = await sub(req, "tags").doc(req.params.id).get(); if (!t.exists) return res.json({ ok: true });
   const ps = await sub(req, "products").where("tags", "array-contains", t.data().name).get();
   await Promise.all(ps.docs.map(d => d.ref.update({ tags: FV.arrayRemove(t.data().name) })));
+  if (t.data().photo) await sub(req, "photos").doc(t.data().photo).delete();
   await t.ref.delete(); res.json({ ok: true });
+}));
+// put one product into a tag, or take it out (from the tag's own page)
+app.post(m + "/tags/:id/items", auth, ownerOnly, h(async (req, res) => {
+  const t = await sub(req, "tags").doc(req.params.id).get(); if (!t.exists) throw new Bad("Tag not found.", 404);
+  const pr = sub(req, "products").doc(String(req.body.product || "")), p = await pr.get(); if (!p.exists) throw new Bad("Product not found.", 404);
+  const name = t.data().name, cur = p.data().tags || [], next = req.body.on ? [...new Set([...cur, name])] : cur.filter(x => x !== name);
+  if (next.length !== cur.length || next.some((x, i) => x !== cur[i])) await pr.update({ tags: next });
+  res.json({ ok: true });
+}));
+// renaming a tag changes it on every product that has it, in one go
+app.put(m + "/tags/:id", auth, ownerOnly, h(async (req, res) => {
+  const name = clean(req.body.name, 30); if (!name) throw new Bad("Enter a tag name.");
+  const ref = sub(req, "tags").doc(req.params.id), t = await ref.get(); if (!t.exists) throw new Bad("Tag not found.", 404);
+  const old = t.data().name; if (name === old) return res.json({ ok: true, changed: 0 });
+  const all = (await sub(req, "tags").get()).docs;
+  if (all.some(d => d.id !== req.params.id && d.data().name.toLowerCase() === name.toLowerCase())) throw new Bad("Another tag already has that name.");
+  const ps = await sub(req, "products").where("tags", "array-contains", old).get();
+  const ops = ps.docs.map(d => b => b.update(d.ref, { tags: [...new Set((d.data().tags || []).map(x => x === old ? name : x))] })); ops.push(b => b.update(ref, { name }));
+  for (let i = 0; i < ops.length; i += 400) { const b = db.batch(); ops.slice(i, i + 400).forEach(f => f(b)); await b.commit(); }
+  res.json({ ok: true, changed: ps.docs.length });
+}));
+// a small picture for the category, shown on the shop's home page
+app.post(m + "/tags/:id/photo", auth, ownerOnly, h(async (req, res) => {
+  const t = await sub(req, "tags").doc(req.params.id).get(); if (!t.exists) throw new Bad("Tag not found.", 404);
+  const im = readImg(req.body.data, 200 * 1024), id = crypto.randomBytes(8).toString("hex");
+  await sub(req, "photos").doc(id).set({ type: im.type, b64: im.b64, createdAt: stamp() });
+  await t.ref.update({ photo: id }); if (t.data().photo) await sub(req, "photos").doc(t.data().photo).delete();
+  res.json({ photo: `/api/photo/${req.params.slug}/${id}` });
+}));
+app.delete(m + "/tags/:id/photo", auth, ownerOnly, h(async (req, res) => {
+  const t = await sub(req, "tags").doc(req.params.id).get(); if (!t.exists) return res.json({ ok: true });
+  if (t.data().photo) { await sub(req, "photos").doc(t.data().photo).delete(); await t.ref.update({ photo: "" }); }
+  res.json({ ok: true });
 }));
 app.post(m + "/tags/:id/move", auth, ownerOnly, h(async (req, res) => {
   const all = (await sub(req, "tags").orderBy("pos").get()).docs, i = all.findIndex(d => d.id === req.params.id), j = req.body.dir === "up" ? i - 1 : i + 1;
