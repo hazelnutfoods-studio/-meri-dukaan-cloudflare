@@ -13,7 +13,7 @@ const stamp = () => FV.serverTimestamp();
 const app = express();
 app.set("trust proxy", 1);
 const small = express.json({ limit: "100kb" }), big = express.json({ limit: "8mb" }); // photos are bigger than normal requests
-app.use((req, res, next) => (req.method === "POST" && /\/(photos?|products-import|move-in)$/.test(req.path) ? big : small)(req, res, next));
+app.use((req, res, next) => ((req.method === "POST" && /\/(photos?|products-import|move-in|banners)$/.test(req.path)) || (req.method === "PUT" && /\/banners\/[^/]+$/.test(req.path)) ? big : small)(req, res, next));
 // (pages and images are served by worker.mjs straight from the public folder)
 
 // ---------- helpers ----------
