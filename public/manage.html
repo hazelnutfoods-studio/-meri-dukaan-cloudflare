@@ -809,7 +809,7 @@ function scanIntoForm() {
 // Duplicate: opens a new product with everything copied except photos, barcode and code (those must be different), and not live until you add photos
 function dupProd(id) {
   const p = P.find(x => x.id == id); if (!p) return; const pre = { __dup: 1 };
-  ["name", "description", "cost", "price", "mrp", "qty", "lowAt", "expiry", "supplier", "brand", "o1", "o2", "mergeUnder", "featured", "kind"].forEach(k => { if (p[k] !== undefined && p[k] !== null) pre[k] = p[k]; });
+  ["name", "description", "cost", "price", "mrp", "qty", "lowAt", "expiry", "supplier", "brand", "o1", "o2", "mergeUnder", "featured", "nw", "bs", "kind"].forEach(k => { if (p[k] !== undefined && p[k] !== null) pre[k] = p[k]; });
   pre.tags = [...(p.tags || [])]; pre.active = false; pre.photos = [];
   openProd("", pre);
 }
@@ -842,7 +842,7 @@ function openProd(id, pre) {
   <label>Pieces in the pack (optional) <span class="mute">· shows as weight × pieces, e.g. 20 g x 20 pieces</span><input name="o2p" type="number" min="1" step="1" inputmode="numeric" ${dis("add")} value="${esc(w.p)}" placeholder="e.g. 20"></label>
   <label>Merge under (optional)${kids ? '<span class="mute" style="display:block;margin:4px 0 10px">Other products are merged under this one, so it is the main product.</span>' : combo("mergeUnder", p.mergeUnder, "Search for a main product", !can("add"))}</label>
   <input type="hidden" name="kind" value="food">
-  <div class="card pcard" style="margin-top:12px">${owner() ? `<div class="trow"><div><b>Live on the online store</b><div class="mute">Customers can see and order it</div></div><label class="sw"><input type="checkbox" name="active" ${p.active ? "checked" : ""} aria-label="Live on the online store"><i></i></label></div><div class="trow"><div><b>Featured</b><div class="mute">Show on the home page</div></div><label class="sw"><input type="checkbox" name="featured" ${p.featured ? "checked" : ""} aria-label="Featured on the home page"><i></i></label></div>` : `<div class="mute">Only the owner can put a product on the online store.</div>`}</div>
+  <div class="card pcard" style="margin-top:12px">${owner() ? `<div class="trow"><div><b>Live on the online store</b><div class="mute">Customers can see and order it</div></div><label class="sw"><input type="checkbox" name="active" ${p.active ? "checked" : ""} aria-label="Live on the online store"><i></i></label></div><div class="trow"><div><b>Featured</b><div class="mute">Show on the home page</div></div><label class="sw"><input type="checkbox" name="featured" ${p.featured ? "checked" : ""} aria-label="Featured on the home page"><i></i></label></div><div class="trow"><div><b>“New” label</b><div class="mute">Automatic: the 4 newest products</div></div><select name="nw" style="width:auto;margin:0;flex:none"><option value="" ${!p.nw ? "selected" : ""}>Automatic</option><option value="on" ${p.nw == "on" ? "selected" : ""}>Always show</option><option value="off" ${p.nw == "off" ? "selected" : ""}>Never show</option></select></div><div class="trow"><div><b>“Bestseller” label</b><div class="mute">Automatic: the 8 best sellers</div></div><select name="bs" style="width:auto;margin:0;flex:none"><option value="" ${!p.bs ? "selected" : ""}>Automatic</option><option value="on" ${p.bs == "on" ? "selected" : ""}>Always show</option><option value="off" ${p.bs == "off" ? "selected" : ""}>Never show</option></select></div>` : `<div class="mute">Only the owner can put a product on the online store.</div>`}</div>
   <details class="more"><summary>More details <span class="mute">· description, code, MRP, low-stock alert, tags</span></summary>
   <label>Description<input name="description" ${dis("add")} value="${esc(p.description)}"></label>
   <label>Product code (SKU, optional)<input name="sku" ${dis("add")} value="${esc(p.sku)}" placeholder="Made for you if left empty"></label>
@@ -1460,7 +1460,52 @@ function addSup(e) { e.preventDefault(); const b = Object.fromEntries(new FormDa
 function delSup(id) { if (confirm("Delete this supplier? Products keep the name.")) act(() => api(base + "/suppliers/" + id, "DELETE")); }
 
 // ----- tags (owner) -----
+let tgTab = "cat";
 function vTag() {
+  const tabs = `<div class="ord-tabs" style="grid-template-columns:repeat(2,1fr);margin-bottom:12px">${[["cat", "Categories"], ["feat", "Features"]].map(([k, l]) => `<button class="${tgTab == k ? "on" : ""}" onclick="tgTab='${k}';draw()">${l}</button>`).join("")}</div>`;
+  return tabs + (tgTab == "feat" ? featBody() : catBody());
+}
+// Features: New, Bestseller and Featured labels. The shop picks New and Bestseller by itself; here you can add or remove products yourself.
+const FEATS = [["new", "New", "Shows a NEW label and appears under “New arrivals”. Automatic: the 4 newest products."], ["best", "Bestseller", "Shows a BESTSELLER label and appears under “Bestsellers”. Automatic: the 8 best sellers."], ["featured", "Featured", "Shows a FEATURED label and appears under “Featured” on the home page. You choose these yourself."]];
+const featMode = (key, p) => key == "new" ? p.nw : key == "best" ? p.bs : "";
+function featOn(key, p) {
+  if (key == "featured") return !!p.featured;
+  const m = featMode(key, p); if (m == "on") return true; if (m == "off") return false;
+  const live = P.filter(x => x.active);
+  return key == "new" ? live.slice(0, 4).some(x => x.id == p.id) : live.filter(x => x.sold > 0).sort((a, b) => b.sold - a.sold).slice(0, 8).some(x => x.id == p.id);
+}
+function featBody() {
+  return `<div class="card"><b>Features</b><p class="mute" style="margin:6px 0 0">Labels shown on your products in the shop. The shop sets New and Bestseller by itself, and you can add or remove products yourself. You can also set them on each product's page.</p></div>` +
+  FEATS.map(([k, name, d]) => `<div class="card row" style="justify-content:space-between;gap:8px"><button class="tgopen" onclick="openFeat('${k}')"><span class="tpic" style="background:#fff4c2;color:#6b5200;font-size:.7rem;font-weight:800;text-align:center;line-height:1.1">${k == "new" ? "NEW" : k == "best" ? "BEST" : "FEAT"}</span><span style="min-width:0"><b>${name}</b><span class="mute" style="display:block">${P.filter(p => featOn(k, p)).length == 1 ? "1 product" : P.filter(p => featOn(k, p)).length + " products"} · tap to edit</span></span></button></div>`).join("");
+}
+function openFeat(key) {
+  const f = FEATS.find(x => x[0] == key), ps = P.filter(p => featOn(key, p));
+  modal(`<h2 style="font-size:1.2rem;margin-bottom:4px">${f[1]}</h2><p class="mute" style="margin:0 0 10px">${f[2]}</p>
+  <div class="row" style="justify-content:space-between;margin:10px 0 8px"><b>Products showing this · ${ps.length}</b><button class="btn sm" onclick="openFeatPick('${key}')">+ Add items</button></div>
+  ${ps.map(p => `<div class="pr" style="cursor:default">${picOf(p)}<div class="grow"><div class="nm">${esc(p.name)}</div><div class="mute">${key == "featured" ? "Chosen by you" : featMode(key, p) == "on" ? "Chosen by you" : "Automatic"}${p.active ? "" : " · not live yet"}</div></div><button class="btn g sm" onclick="featToggle('${key}','${p.id}',false,true)">Remove</button></div>`).join("") || '<p class="mute">No products yet. Press “+ Add items”.</p>'}
+  ${key == "featured" ? "" : `<button class="btn g" style="margin-top:14px" onclick="featReset('${key}')">Back to automatic for all products</button><p class="mute" style="margin:6px 0 0">Removing a product keeps it out even if it would qualify by itself. This button clears every choice you made.</p>`}`);
+  $("dlg").classList.add("tall");
+}
+const featRows = (key, q) => { const s = (q || "").trim().toLowerCase(), list = P.filter(p => !s || [p.name, p.brand, p.sku].join(" ").toLowerCase().includes(s));
+  return list.map(p => `<label class="pr" style="cursor:pointer">${picOf(p)}<div class="grow"><div class="nm">${esc(p.name)}</div><div class="mute">${esc(p.sku || "No code")}${p.active ? "" : " · not live yet"}</div></div><input type="checkbox" ${featOn(key, p) ? "checked" : ""} onchange="featToggle('${key}','${p.id}',this.checked)" style="width:24px;height:24px;margin:0;flex:none" aria-label="Show ${esc(p.name)} as ${key}"></label>`).join("") || '<p class="mute">No products match.</p>'; };
+function openFeatPick(key) {
+  const f = FEATS.find(x => x[0] == key);
+  modal(`<div class="row" style="justify-content:space-between;margin-bottom:8px"><button class="lnk" onclick="openFeat('${key}')">← Done</button><b>Add items to ${f[1]}</b><span style="width:48px"></span></div>
+  <div class="srch">${ic("search")}<input id="ftq" placeholder="Search products" oninput="$('ftl').innerHTML=featRows('${key}',this.value)" autocomplete="off"></div><div id="ftl">${featRows(key, "")}</div>`);
+  $("dlg").classList.add("tall");
+}
+async function featToggle(key, pid, on, refresh) {
+  const p = P.find(x => x.id == pid); if (!p) return; const was = { nw: p.nw, bs: p.bs, featured: p.featured };
+  const body = key == "featured" ? { featured: !!on } : { [key == "new" ? "nw" : "bs"]: on ? "on" : "off" };
+  Object.assign(p, body); // shows at once; undone if it cannot be saved
+  try { await api(base + "/products/" + pid, "PUT", body); if (refresh) { openFeat(key); draw(); } else draw(); }
+  catch (e) { Object.assign(p, was); alert(e.message); if (refresh) openFeat(key); else { const q = $("ftq"); $("ftl").innerHTML = featRows(key, q ? q.value : ""); } }
+}
+async function featReset(key) {
+  if (!confirm("Go back to automatic for every product?")) return;
+  try { await api(base + "/features/" + key + "/reset", "POST"); await load(); draw(); openFeat(key); } catch (e) { alert(e.message); }
+}
+function catBody() {
   return `<form class="card" onsubmit="addTag(event)"><b>Add a tag</b><p class="mute">Each tag becomes a section on your online store, like “Bestsellers” or “Snacks”. Products with no tag appear under “More items”. Staff can put products into tags, but only you can create them.</p>
   <div class="row" style="flex-wrap:nowrap"><input name="name" placeholder="e.g. Bestsellers" required maxlength="30" style="margin:0"><button class="btn">Add</button></div></form>` +
   (T.map((t, i) => `<div class="card row" style="justify-content:space-between;gap:8px"><button class="tgopen" onclick="openTag('${t.id}')"><span class="tpic">${t.photo ? `<img src="${esc(t.photo)}" alt="">` : ic("camera")}</span><span style="min-width:0"><b>${esc(t.name)}</b><span class="mute" style="display:block">${P.filter(p => (p.tags || []).includes(t.name)).length} products · tap to edit</span></span></button>

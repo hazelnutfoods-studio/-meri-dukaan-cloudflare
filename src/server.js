@@ -195,7 +195,7 @@ app.get("/api/store/:slug", h(async (req, res) => {
     name: s.data().name, maxQty: maxQtyOf(s.data()), phone: (s.data().business || {}).phone || "", tags: tg.docs.map(d => d.data().name), tagPics: Object.fromEntries(tg.docs.filter(d => d.data().photo).map(d => [d.data().name, `/api/photo/${req.params.slug}/${d.data().photo}`])),
     products: ps.docs.filter(d => !isExpired(d.data())).sort((a, b) => when(a) - when(b)).map(d => {
       const x = d.data(), photos = (x.photos || []).map(i => `/api/photo/${req.params.slug}/${i}`);
-      return { id: d.id, name: x.name, price: x.price, mrp: x.mrp > x.price ? x.mrp : 0, description: x.description || "", qty: x.qty == null ? null : sellable(x), tags: x.tags || [], group: x.mergeUnder || d.id, kind: x.kind || "general", brand: x.brand || "", o1: x.o1 || "", o2: x.o2 || "", sold: x.sold || 0, exp: x.qty === 0 ? "" : nextExpiry(batchesOf(x), x.expiry), featured: !!x.featured, at: when(d), photos: photos.length ? photos : (x.image ? [x.image] : []) };
+      return { id: d.id, name: x.name, price: x.price, mrp: x.mrp > x.price ? x.mrp : 0, description: x.description || "", qty: x.qty == null ? null : sellable(x), tags: x.tags || [], group: x.mergeUnder || d.id, kind: x.kind || "general", brand: x.brand || "", o1: x.o1 || "", o2: x.o2 || "", sold: x.sold || 0, nw: x.nw || "", bs: x.bs || "", exp: x.qty === 0 ? "" : nextExpiry(batchesOf(x), x.expiry), featured: !!x.featured, at: when(d), photos: photos.length ? photos : (x.image ? [x.image] : []) };
     }),
     wa: waOf(s.data()), hasUpi: !!(s.data().business || {}).upi, rating: (s.data().rev || {}).n ? { n: s.data().rev.n, avg: Math.round(10 * s.data().rev.sum / s.data().rev.n) / 10 } : null,
     reviews: rv.docs.map(d => d.data()).map(r => ({ name: r.name, rating: r.rating, text: r.text, at: r.at })),
@@ -588,6 +588,7 @@ async function fields(req, b) {
     if (b.active !== undefined) u.active = !!b.active;
     if (b.mrp !== undefined) { const v = b.mrp === "" || b.mrp == null ? 0 : Number(b.mrp); if (!Number.isFinite(v) || v < 0) throw new Bad("Enter a valid MRP (the crossed-out price)."); u.mrp = v; }
     if (b.featured !== undefined) u.featured = !!b.featured;
+    for (const k of ["nw", "bs"]) if (b[k] !== undefined) u[k] = b[k] === "on" || b[k] === "off" ? b[k] : ""; // New / Bestseller: "" = automatic, "on" = always, "off" = never
   }
   return u;
 }
@@ -759,6 +760,13 @@ app.post(m + "/tags/:id/items", auth, ownerOnly, h(async (req, res) => {
   const name = t.data().name, cur = p.data().tags || [], next = req.body.on ? [...new Set([...cur, name])] : cur.filter(x => x !== name);
   if (next.length !== cur.length || next.some((x, i) => x !== cur[i])) await pr.update({ tags: next });
   res.json({ ok: true });
+}));
+// back to automatic for one feature (New or Bestseller) on every product
+app.post(m + "/features/:key/reset", auth, ownerOnly, h(async (req, res) => {
+  const f = { new: "nw", best: "bs" }[req.params.key]; if (!f) throw new Bad("Unknown feature.");
+  const ps = (await sub(req, "products").get()).docs.filter(d => d.data()[f]);
+  for (let i = 0; i < ps.length; i += 400) { const b = db.batch(); ps.slice(i, i + 400).forEach(d => b.update(d.ref, { [f]: "" })); await b.commit(); }
+  res.json({ ok: true, changed: ps.length });
 }));
 // renaming a tag changes it on every product that has it, in one go
 app.put(m + "/tags/:id", auth, ownerOnly, h(async (req, res) => {

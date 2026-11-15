@@ -44,8 +44,8 @@ button{cursor:pointer}a{color:inherit}
 .pc .pr{margin-top:10px;display:flex;align-items:center;justify-content:space-between}.pc .pr b{display:block;font-size:17px;font-weight:800;line-height:1.1}.pc .pr s{font-size:12px;color:var(--mute)}
 .add{width:44px;height:44px;padding:0;border:none;border-radius:14px;background:var(--pu);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}.add[disabled]{background:var(--line);color:var(--mute)}
 .so{position:absolute;inset:0;border-radius:20px;background:rgba(255,251,234,.7);display:flex;align-items:flex-start;justify-content:center;padding-top:50px;font-weight:800;color:var(--mute)}
-.cats4{margin:6px 20px 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.cats4 button{border:none;background:none;padding:0;text-align:center;font-weight:700;font-size:13px;color:var(--ink)}
-.cats4 .i{height:74px;border-radius:22px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--pu)}.cats4 .i{overflow:hidden}.cats4 .i img{width:100%;height:100%;object-fit:cover}.cats4 span{display:block;margin-top:7px}
+.cats4{margin:6px 20px 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 10px;align-items:start}.cats4 button{border:none;background:none;padding:0;text-align:center;font-weight:700;font-size:13px;color:var(--ink);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;align-self:start;min-width:0}
+.cats4 .i{aspect-ratio:1/1;width:100%;border-radius:22px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--pu)}.cats4 .i{overflow:hidden}.cats4 .i img{width:100%;height:100%;object-fit:cover}.cats4 span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;margin-top:7px;line-height:1.25;min-height:2.5em;overflow-wrap:break-word;text-align:center}
 .cat2{margin:16px 20px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .cat2 button{position:relative;text-align:left;border-radius:22px;background:#fff;border:1px solid var(--line);padding:12px;color:var(--ink)}.cat2 button.on{border:2px solid var(--pu);padding:11px}
 .cat2 .i{height:84px;border-radius:14px;background:var(--lav);display:flex;align-items:center;justify-content:center;color:var(--pu)}.cat2 button:nth-child(4n+2) .i,.cat2 button:nth-child(4n+3) .i{background:var(--ye2)}
@@ -211,15 +211,20 @@ async function heart(e, id) {
   const on = !wished(id); me.wishlist = on ? [...me.wishlist, id] : me.wishlist.filter(x => x !== id); render();
   try { await api("/c/wishlist", "PUT", { id, on }); } catch (er) { toast(er.message); loadMe(); }
 }
+// New / Bestseller: the shop decides by itself (the 4 newest, the 8 best sellers) unless the owner chose "always" or "never" for a product
+const autoBest = () => shop.products.filter(p => p.sold > 0).sort((a, b) => b.sold - a.sold).slice(0, 8).map(p => p.id);
+const isNew = p => p.nw === "on" || (p.nw !== "off" && newest().includes(p.id));
+const isBest = p => p.bs === "on" || (p.bs !== "off" && autoBest().includes(p.id));
+const featBadge = p => isBest(p) ? "BESTSELLER" : isNew(p) ? "NEW" : p.featured ? "FEATURED" : "";
 const newest = (() => { let cache = null; return () => { const a = [...shop.products].sort((x, y) => y.at - x.at).slice(0, 4).map(p => p.id); return a; }; })();
 function card(p, badge, withHeart) {
   const single = sibs(p).length < 2, so = left(p) <= 0;
-  const b = badge || (pct(p) ? pct(p) + "% OFF" : "");
+  const b = badge || featBadge(p) || (pct(p) ? pct(p) + "% OFF" : "");
   return `<div class="pc" onclick="go('product','${p.id}')"><div class="pim${alt(p)}">${p.photos[0] ? `<img src="${esc(p.photos[0])}" alt="${esc(p.name)}" loading="lazy">` : ic("bar", 44)}${b ? `<span class="bg">${esc(b)}</span>` : ""}${withHeart ? `<button class="hr ${wished(p.id) ? "on" : ""}" aria-label="Save to wishlist" onclick="heart(event,'${p.id}')">${wished(p.id) ? heartFill() : ic("heart", 18)}</button>` : ""}</div>
     <div class="br">${esc(p.brand || p.tags[0] || "")}</div><div class="nm">${esc(p.name)}</div><div class="sbl">${esc(sub(p))}</div>
     <div class="pr"><div><b>₹${p.price}</b>${p.mrp ? `<s>₹${p.mrp}</s>` : ""}</div>${single && !so ? (cart[p.id] ? `<div class="qty s mini" onclick="event.stopPropagation()"><button aria-label="Remove one ${esc(p.name)}" onclick="chg('${p.id}',-1)">${ic("minus", 16, 2.6)}</button><b>${cart[p.id]}</b><button aria-label="Add one ${esc(p.name)}" onclick="chg('${p.id}',1)">${ic("plus", 16, 2.6)}</button></div>` : `<button class="add" aria-label="Add ${esc(p.name)} to cart" onclick="event.stopPropagation();chg('${p.id}',1)">${ic("plus", 20, 2.4)}</button>`) : ""}</div>${so ? '<div class="so">Sold out</div>' : ""}</div>`;
 }
-const rowOf = (list, bf) => `<div class="row">${list.map(p => card(p, bf)).join("")}</div>`;
+const rowOf = (list, bf) => `<div class="row">${list.map(p => card(p, typeof bf === "function" ? bf(p) : bf)).join("")}</div>`;
 const sec = (t, inner, to, lab) => inner ? `<div class="sh"><h2>${t}</h2>${to ? `<a role="button" tabindex="0" onclick="${to}">${lab || "See all"}</a>` : ""}</div>${inner}` : "";
 
 // ---- screens ----
@@ -227,14 +232,14 @@ const bellBtn = () => `<button class="sq" aria-label="Notifications" onclick="${
 const hdr = (title, opt = {}) => `<div class="hdr">${opt.back === false ? "" : `<button class="back" aria-label="Back" onclick="back()">${ic("back")}</button>`}<div class="t"><h1>${esc(title)}</h1>${opt.sub ? `<div class="s">${esc(opt.sub)}</div>` : ""}</div>${opt.bell ? bellBtn() : ""}${opt.right || ""}</div>`;
 
 function home() {
-  const ps = shop.products, ids = newest();
-  const newer = ps.filter(p => ids.includes(p.id)).sort((a, b) => b.at - a.at), best = ps.filter(p => p.sold > 0).sort((a, b) => b.sold - a.sold).slice(0, 8), offers = ps.filter(p => pct(p) > 0).sort((a, b) => pct(b) - pct(a)).slice(0, 8), feat = ps.filter(p => p.featured).slice(0, 8);
+  const ps = shop.products;
+  const newer = ps.filter(isNew).sort((a, b) => b.at - a.at).slice(0, 12), best = ps.filter(isBest).sort((a, b) => b.sold - a.sold || b.at - a.at).slice(0, 12), offers = ps.filter(p => pct(p) > 0).sort((a, b) => pct(b) - pct(a)).slice(0, 8), feat = ps.filter(p => p.featured).slice(0, 8);
   const hero = ps.find(p => p.photos[0]);
   return `<div class="hdr"><div class="logo">${esc((shop.name || "S").trim()[0].toUpperCase())}</div><div class="t"><h1 style="font-size:18px">${esc(shop.name)}</h1><div class="s">Order online</div></div><button class="sq" aria-label="Wishlist" onclick="go('wishlist')">${ic("heart")}</button>${bellBtn()}</div>
     <div class="sb"><label class="in">${ic("search")}<input type="search" aria-label="Search" placeholder="Search products…" onfocus="this.blur();go('search')"></label><button class="fb" aria-label="Search and filter" onclick="go('search')">${ic("sliders")}</button></div>
     <div class="ban"><div class="c1"></div><div class="c2"></div><div class="im">${hero ? `<img src="${esc(hero.photos[0])}" alt="">` : ic("bar", 56)}</div><div class="tx"><span class="pill y">NEW IN</span><h2>Indulge in<br>pure bliss</h2><div class="sub">Fresh from ${esc(shop.name)}</div><button class="ybtn" onclick="tag='';root('cats')">Shop now</button></div></div>
-    ${shop.tags.length ? sec("Shop by category", `<div class="cats4">${shop.tags.slice(0, 8).map(t => `<button data-t="${esc(t)}" onclick="tag=this.dataset.t;root('cats')"><div class="i">${(shop.tagPics || {})[t] ? `<img src="${esc(shop.tagPics[t])}" alt="">` : ic("bar", 30)}</div><span>${esc(t)}</span></button>`).join("")}</div>`, "root('cats')") : ""}
-    ${sec("Offers &amp; discounts", offers.length ? rowOf(groups(offers)) : "", "tag='';root('cats')", "View all")}
+    ${shop.tags.length ? sec("Shop by category", `<div class="cats4">${shop.tags.slice(0, 8).map(t => `<button data-t="${esc(t)}" onclick="tag=this.dataset.t;root('cats')"><div class="i">${(shop.tagPics || {})[t] ? `<img src="${esc(shop.tagPics[t])}" alt="">` : ic("bar", 30)}</div><span>${esc(t).replace(/\//g, "/<wbr>")}</span></button>`).join("")}</div>`, "root('cats')") : ""}
+    ${sec("Offers &amp; discounts", offers.length ? rowOf(groups(offers), p => pct(p) + "% OFF") : "", "tag='';root('cats')", "View all")}
     ${sec("New arrivals", newer.length ? rowOf(groups(newer), "NEW") : "", "tag='';root('cats')", "View all")}
     ${sec("Bestsellers", best.length ? `<div class="grid" style="margin-top:6px">${groups(best).map(p => card(p, "BESTSELLER", 1)).join("")}</div>` : "", "tag='';root('cats')")}
     ${sec("Featured", feat.length ? rowOf(groups(feat), "FEATURED") : "")}
@@ -281,6 +286,7 @@ function product() {
     <div class="hero"><div class="g" id="gal" onscroll="const c=Math.round(this.scrollLeft/this.clientWidth);if(c!==pimg){pimg=c;const k=document.getElementById('cnt');if(k)k.textContent=(c+1)+' / ${photos.length}';document.querySelectorAll('.thumbs button').forEach((b,i)=>b.classList.toggle('on',i===c))}">${photos.map(u => `<div><img src="${esc(u)}" alt="${esc(p.name)}"></div>`).join("") || `<div>${ic("bar", 90, 1.2)}</div>`}</div>${photos.length > 1 ? `<div class="cnt" id="cnt">${ph + 1} / ${photos.length}</div>` : ""}</div>
     <div class="sheet">${photos.length > 1 ? `<div class="thumbs">${photos.map((u, i) => `<button class="${i === ph ? "on" : ""}" aria-label="Photo ${i + 1}" onclick="pimg=${i};const g=document.getElementById('gal');g.scrollTo({left:g.clientWidth*${i},behavior:'smooth'})"><img src="${esc(u)}" alt=""></button>`).join("")}</div>` : ""}
     <div class="pbr" style="margin-top:${photos.length > 1 ? 16 : 4}px">${p.brand ? `<button class="lk bl" data-b="${esc(p.brand)}" onclick="go('brand',this.dataset.b)">${esc(p.brand)}</button>` : esc(p.tags[0] || "")}</div>
+    ${featBadge(p) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${[isBest(p) ? "BESTSELLER" : "", isNew(p) ? "NEW" : "", p.featured ? "FEATURED" : ""].filter(Boolean).map(x => `<span class="pill y">${x}</span>`).join("")}</div>` : ""}
     <h1 class="ptl">${esc(p.name)}</h1>
     <div class="prow"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="ppr">₹${p.price}</span>${p.mrp ? `<s class="pmrp">₹${p.mrp}</s><span class="pill y off">${pct(p)}% OFF</span>` : ""}</div>${pill}</div>
     ${flav}${wt}

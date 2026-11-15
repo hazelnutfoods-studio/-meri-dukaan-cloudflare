@@ -52,5 +52,17 @@ let pass = 0; const ok = (c, m) => { assert(c, m); pass++; console.log("ok -", m
   await call(M + "/tags/" + tb.id + "/items", "POST", { product: lone, on: true }); ok((await call(M + "/products")).j.find(x => x.id === lone).tags.length === 1, "adding twice does not repeat it");
   r = await call(M + "/tags/" + tb.id + "/items", "POST", { product: lone, on: false }); ok((await call(M + "/products")).j.find(x => x.id === lone).tags.length === 0, "product taken out of the tag");
   r = await call(M + "/tags/" + tb.id + "/items", "POST", { product: "nope", on: true }); ok(r.s === 404 || r.s === 400, "unknown product refused");
+  // ---- features: New / Bestseller chosen by the owner ----
+  const fp = async (n) => { const id = (await call(M + "/products", "POST", { name: n, price: 10, cost: 5, qty: 3 })).j.id; await call(M + "/products/" + id + "/photos", "POST", { data: jpg }); await call(M + "/products/" + id, "PUT", { active: true }); return id; };
+  const f1 = await fp("F1");
+  const pub = async () => (await (await fetch(U + "/api/store/asha?" + Date.now() + Math.random())).json()).products.find(x => x.id === f1);
+  ok((await pub()).nw === "" && (await pub()).bs === "", "labels are automatic at first");
+  r = await call(M + "/products/" + f1, "PUT", { nw: "off", bs: "on" }); ok(r.s === 200, "owner sets New=never, Bestseller=always");
+  let pp = await pub(); ok(pp.nw === "off" && pp.bs === "on", "shop receives the choices: " + pp.nw + "/" + pp.bs);
+  r = await call(M + "/products/" + f1, "PUT", { nw: "junk" }); pp = await pub(); ok(pp.nw === "", "an unknown value means automatic");
+  const owners = (await call(M + "/products")).j.find(x => x.id === f1); ok(owners.bs === "on", "owner list carries the choice");
+  r = await call(M + "/features/best/reset", "POST"); ok(r.s === 200 && r.j.changed >= 1, "reset to automatic: " + JSON.stringify(r.j));
+  pp = await pub(); ok(pp.bs === "", "choice cleared by the reset");
+  r = await call(M + "/features/nope/reset", "POST"); ok(r.s === 400, "unknown feature refused");
   console.log("EXPIRY+BARCODE: ALL " + pass + " PASSED"); srv.close(); process.exit(0);
 })().catch(e => { console.log("FAILED", e.message); process.exit(1); });
